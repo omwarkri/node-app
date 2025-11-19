@@ -2,49 +2,18 @@ pipeline {
     agent any
 
     stages {
-
-        stage('Checkout') {
+        stage('Go To App Folder') {
             steps {
-                echo "Pulling code from GitHub..."
-                checkout scm
-            }
-        }
+                dir('/home/om_warkri/DevOps-Task/Nodejs-project/my-nodejs/my-node-app') {
+                    sh '''
+                        echo "Installing dependencies..."
+                        npm install
 
-        stage('Install Dependencies') {
-            steps {
-                echo "Installing npm packages..."
-                sh 'npm install'
+                        echo "Starting app in background..."
+                        nohup npm start > app.log 2>&1 &
+                    '''
+                }
             }
-        }
-
-        stage('Build') {
-            steps {
-                echo "Building project..."
-                sh 'npm run build || echo "No build script found"'
-            }
-        }
-
-        stage('Test') {
-            steps {
-                echo "Running tests..."
-                sh 'npm test || echo "No tests found"'
-            }
-        }
-
-        stage('Archive Artifacts') {
-            steps {
-                echo "Archiving artifacts..."
-                archiveArtifacts artifacts: '**/*', onlyIfSuccessful: true
-            }
-        }
-    }
-
-    post {
-        success {
-            echo "Pipeline executed successfully!"
-        }
-        failure {
-            echo "Pipeline failed!"
         }
     }
 }

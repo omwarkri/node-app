@@ -1,54 +1,62 @@
-https://github.com/omwarkri/react-code.gitpipeline {
+pipeline {
     agent any
-    
+
     environment {
-        DOCKERHUB_USERNAME = "omwarkri123"
-        IMAGE_NAME = "react-app"
+        DOCKERHUB_USER = "omwarkri123"
+        IMAGE_NAME = "node-app"
+        IMAGE_TAG = "v1"
     }
 
     stages {
+
         stage('Checkout Code') {
             steps {
-                git 'https://github.com/omwarkri/react-code.git'
+                git 'https://github.com/omwarkri/node-app.git'
             }
         }
 
-        stage('Build React App & Docker Image') {
+        stage('Build Docker Image') {
             steps {
-                script {
-                    sh 'docker build -t $omwarkri123/$react-app:latest .'
-                }
+                sh """
+                docker build -t ${DOCKERHUB_USER}/${IMAGE_NAME}:${IMAGE_TAG} .
+                """
             }
         }
 
-        stage('Login to Docker Hub') {
+        stage('Docker Hub Login') {
             steps {
-                script {
-                    sh "echo $Radhakrushn@123 | docker login -u $omwarkri123 --password-stdin"
+                withCredentials([usernamePassword(
+                    credentialsId: 'dockerhub-token',
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS'
+                )]) {
+                    sh """
+                    echo \$DOCKER_PASS | docker login -u \$DOCKER_USER --password-stdin
+                    """
                 }
             }
         }
 
         stage('Push Image to Docker Hub') {
             steps {
-                script {
-                    sh 'docker push $omwarkri123/$react-app:latest'
-                }
+                sh """
+                docker push ${DOCKERHUB_USER}/${IMAGE_NAME}:${IMAGE_TAG}
+                """
             }
         }
 
-        stage('Run Container') {
+        stage('Deploy to Kubernetes') {
             steps {
-                script {
-                    // Stop old container if exists
-                    sh 'docker stop react-container || true'
-                    sh 'docker rm react-container || true'
-
-                    // Run new container
-                    sh 'docker run -d --name react-container -p 80:80 $omwarkri123/$react-app:latest'
+                withCredentials([file(
+                    credentialsId: 'kubeconfig',
+                    variable: 'KUBECONFIG'
+                )]) {
+                    sh """
+                    kubectl apply -f k8s/deployment.yaml
+                    kubectl apply -f k8s/service.yaml
+                    """
                 }
             }
         }
     }
 }
-
